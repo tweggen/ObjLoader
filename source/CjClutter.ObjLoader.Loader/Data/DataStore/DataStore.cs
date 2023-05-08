@@ -12,6 +12,7 @@ namespace ObjLoader.Loader.Data.DataStore
         private Group _currentGroup;
 
         private readonly List<Group> _groups = new List<Group>();
+        private readonly SortedDictionary<string, Group> _groupsByMaterial = new SortedDictionary<string, Group>();
         private readonly List<Material> _materials = new List<Material>();
 
         private readonly List<Vertex> _vertices = new List<Vertex>();
@@ -56,6 +57,11 @@ namespace ObjLoader.Loader.Data.DataStore
             _groups.Add(_currentGroup);
         }
 
+
+        /**
+         * Called if a face or a material is encountered. 
+         * Make sure we have a group even if no group was started before.
+         */
         private void PushGroupIfNeeded()
         {
             if (_currentGroup == null)
@@ -63,6 +69,7 @@ namespace ObjLoader.Loader.Data.DataStore
                 PushGroup("default");
             }
         }
+        
 
         public void AddVertex(Vertex vertex)
         {
@@ -88,8 +95,59 @@ namespace ObjLoader.Loader.Data.DataStore
         {
             var material = _materials.SingleOrDefault(x => x.Name.EqualsOrdinal(materialName)) ??
                            _materials.SingleOrDefault(x => x.Name.EqualsOrdinalIgnoreCase(materialName));
-            PushGroupIfNeeded();
+
+            /*
+             * If we have a group without a material, then assign the material to
+             * the current group.
+             *
+             * If our current group already has a material, find/create a group that
+             * has this new material.
+             *
+             * Note, that we might be without a group at this point.
+             */
+
+            Group existingGroup;
+            bool hadGroupBefore = _groupsByMaterial.TryGetValue(material.Name, out existingGroup);
+            if (hadGroupBefore)
+            {
+                /*
+                 * If we had a group for that material before, this is a no-brainer.
+                 * Just continue to use it.
+                 */
+                _currentGroup = existingGroup;
+                return;
+            }
+            
+            /*
+             * So we didn't have a group for that material before.
+             * The current group can't have the proper material, if it would, we would have
+             * found it before.
+             *
+             * ... double check
+             */
+            if (_currentGroup != null)
+            {
+                if (_currentGroup.Material != null)
+                {
+                    if (_currentGroup.Material == material)
+                    {
+                        _groupsByMaterial[material.Name] = _currentGroup;
+                        return;
+                    }
+                    else
+                    {
+                        _currentGroup = null;
+                    }
+                }
+            }
+
+            if (_currentGroup == null)
+            {
+                _currentGroup = new Group($"default ({material.Name})");
+                _groups.Add(_currentGroup);   
+            }
             _currentGroup.Material = material;
+            _groupsByMaterial[material.Name] = _currentGroup;
         }
     }
 }
