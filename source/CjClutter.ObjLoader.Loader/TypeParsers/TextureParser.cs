@@ -24,8 +24,8 @@ namespace ObjLoader.Loader.TypeParsers
         {
             string[] parts = line.Split(' ');
 
-            float x = parts[0].ParseInvariantFloat();
-            float y = parts[1].ParseInvariantFloat();
+            float x = (parts[0].ParseInvariantFloat()+1f)/2f;
+            float y = (parts[1].ParseInvariantFloat()+1f)/2f;
 
             var texture = new Texture(x, y);
             _textureDataStore.AddTexture(texture);
